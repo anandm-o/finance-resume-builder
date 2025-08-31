@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-finance-50 text-finance-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 shadow-soft;
+  }
+  
+  .btn-secondary {
+    @apply bg-white hover:bg-finance-50 text-finance-700 font-medium py-3 px-6 rounded-lg border border-finance-200 transition-colors duration-200 shadow-soft;
+  }
+  
+  .btn-outline {
+    @apply bg-transparent hover:bg-finance-50 text-finance-600 font-medium py-2 px-4 rounded-md border border-finance-300 transition-colors duration-200;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-soft border border-finance-100;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-finance-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+  }
+  
+  .section-header {
+    @apply text-lg font-semibold text-finance-800 mb-4;
+  }
+  
+  .resume-template {
+    @apply font-serif text-black bg-white p-8 max-w-[8.5in] mx-auto shadow-medium;
+    font-size: 11pt;
+    line-height: 1.3;
+    font-family: 'Times New Roman', serif;
+  }
+  
+  .resume-name {
+    @apply text-2xl font-bold mb-2;
+    font-size: 16pt;
+  }
+  
+  .resume-contact {
+    @apply text-sm mb-8;
+    font-size: 11pt;
+  }
+  
+  .resume-section-title {
+    @apply font-bold uppercase text-base mb-2;
+    font-size: 12pt;
+    letter-spacing: 0.5px;
+  }
+  
+  .resume-bullet {
+    @apply mb-2;
+    text-indent: -0.25in;
+    padding-left: 0.25in;
+    position: relative;
+  }
+  
+  .resume-bullet::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+  }
+  
+  .resume-sub-bullet {
+    @apply mb-1;
+    text-indent: -0.125in;
+    padding-left: 0.125in;
+    position: relative;
+  }
+  
+  .resume-sub-bullet::before {
+    content: "▪";
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+  }
+  
+  /* Horizontal line styling */
+  .resume-template hr {
+    @apply border-black;
+    border-width: 1px;
+    margin: 0.75rem 0;
+  }
+  
+  /* Right-aligned text for dates and locations */
+  .resume-template .text-right {
+    text-align: right;
+    min-width: 120px;
+  }
+  
+  /* Proper spacing between sections */
+  .resume-template > div:not(:last-child) {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Company and organization name styling */
+  .resume-template .font-semibold {
+    font-weight: 600;
+    font-size: 11pt;
+  }
+  
+  /* Position title styling */
+  .resume-template .text-sm {
+    font-size: 10pt;
+  }
+  
+  /* Project experience styling */
+  .resume-template .ml-8 {
+    margin-left: 2rem;
+  }
+  
+  .resume-template .ml-4 {
+    margin-left: 1rem;
+  }
+  
+  /* Project experience specific styling */
+  .resume-template .project-item {
+    margin-bottom: 0.5rem;
+  }
+  
+  .resume-template .project-name {
+    font-size: 10pt;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+  
+  .resume-template .project-name::before {
+    content: "o";
+    margin-right: 0.5rem;
+    font-weight: bold;
+  }
+  
+  /* Ensure proper spacing for the selected experience section */
+  .resume-template .selected-experience {
+    margin-bottom: 1rem;
+  }
+  
+  /* Skills section specific styling */
+  .resume-template .skills-section {
+    margin-bottom: 0.5rem;
+  }
+  
+  .resume-template .skills-section:last-child {
+    margin-bottom: 0;
+  }
+  
+  /* Ensure consistent font sizes */
+  .resume-template * {
+    font-family: 'Times New Roman', serif;
+  }
+  
+  /* Specific styling for the template structure */
+  .resume-template .section-content {
+    margin-bottom: 1.5rem;
+  }
+  
+  .resume-template .section-content:last-child {
+    margin-bottom: 0;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
