@@ -40,40 +40,49 @@
   }
   
   .resume-template {
-    @apply font-serif text-black bg-white p-8 max-w-[8.5in] mx-auto shadow-medium;
+    @apply text-black bg-white mx-auto shadow-medium;
+    width: 8.5in;
+    min-height: 11in;
+    padding-top: 0.5in;
+    padding-bottom: 0.5in;
+    padding-left: 0.7in;
+    padding-right: 0.7in;
     font-size: 11pt;
-    line-height: 1.3;
+    line-height: 1.0;
     font-family: 'Times New Roman', serif;
   }
   
   .resume-name {
-    @apply text-2xl font-bold mb-2;
     font-size: 16pt;
+    font-weight: bold;
+    text-transform: uppercase;
   }
   
   .resume-contact {
-    @apply text-sm mb-8;
     font-size: 11pt;
+    margin-bottom: 12pt;
   }
   
   .resume-section-title {
-    @apply font-bold uppercase text-base mb-2;
     font-size: 12pt;
-    letter-spacing: 0.5px;
-  }
-  
-  .resume-bullet {
-    @apply mb-2;
-    text-indent: -0.25in;
-    padding-left: 0.25in;
-    position: relative;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 4pt;
   }
   
   .resume-bullet::before {
-    content: "•";
-    position: absolute;
-    left: 0;
-    font-weight: bold;
+    content: "• ";
+    margin-right: 4px;
+  }
+  
+  .resume-sub-bullet::before {
+    content: "§ ";
+    margin-right: 4px;
+  }
+  
+  .project-bullet::before {
+    content: "o ";
+    margin-right: 4px;
   }
   
   .resume-sub-bullet {

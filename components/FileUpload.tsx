@@ -4,19 +4,68 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, ArrowLeft, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { useResumeStore } from '../store/resumeStore';
-import { ResumeAI, ParsedResume } from '../lib/ai';
+import { ResumeAI } from '../lib/ai';
+import { ParsedResume } from '../types/resume';
 
 // Utility function to read file content
 const readFileContent = async (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      resolve(content);
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsText(file);
-  });
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  // Determine the appropriate API endpoint based on file type
+  let apiEndpoint = '';
+  let errorMessage = '';
+  
+  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    apiEndpoint = '/api/parse-pdf';
+    errorMessage = 'Failed to parse PDF file. Please try uploading a text-based PDF or DOCX.';
+  } else if (
+    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    file.name.toLowerCase().endsWith('.docx')
+  ) {
+    apiEndpoint = '/api/parse-docx';
+    errorMessage = 'Failed to parse DOCX file. Please try uploading a different DOCX file.';
+  } else {
+    // For other file types (like .txt), use FileReader
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        resolve(content);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  }
+  
+  try {
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      // Handle specific error cases
+      if (response.status === 422) {
+        throw new Error('Looks like your file is image-based. Please upload a text-based PDF or DOCX export.');
+      }
+      
+      throw new Error(errorData.error || errorMessage);
+    }
+    
+    const data = await response.json();
+    return data.text;
+  } catch (error: any) {
+    if (error.message.includes('image-based')) {
+      throw error; // Re-throw the specific error message
+    }
+    if (error.message.includes('PDF parsing library error')) {
+      throw new Error('PDF parsing is currently having issues. Please try uploading a DOCX file instead.');
+    }
+    throw new Error(errorMessage);
+  }
 };
 
 export default function FileUpload({ onBack }: { onBack: () => void }) {
@@ -27,12 +76,13 @@ export default function FileUpload({ onBack }: { onBack: () => void }) {
   const [parsedData, setParsedData] = useState<ParsedResume | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   
-  const { resetResume } = useResumeStore();
+  const { resetResume, updateResumeFromAI } = useResumeStore();
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
 
     const file = acceptedFiles[0];
+    console.log('File dropped:', file.name, file.type, file.size);
     setUploadedFile(file);
     setIsProcessing(true);
     setError('');
@@ -42,25 +92,15 @@ export default function FileUpload({ onBack }: { onBack: () => void }) {
       // Read file content
       console.log('Starting file processing...');
       const content = await readFileContent(file);
-      console.log('File content read:', content.substring(0, 200) + '...');
-      setCurrentStep('Processing with AI...');
-
-      // Parse with AI
-      console.log('Calling Gemini AI to parse resume...');
-      const parsed = await ResumeAI.parseResume(content, 'Investment Banking Analyst');
-      console.log('AI parsing result:', parsed);
-      setParsedData(parsed);
-      setCurrentStep('Enhancing content...');
-
-      // Enhance with AI
-      console.log('Calling Gemini AI to enhance resume...');
-      const enhanced = await ResumeAI.enhanceResume(parsed as any, 'Investment Banking Analyst');
-      console.log('AI enhancement result:', enhanced);
-      setCurrentStep('Updating resume...');
-
-      // For now, just reset the resume since updateResumeFromAI doesn't exist
-      resetResume();
+      console.log('File content read successfully!');
+      console.log('Content length:', content.length);
+      console.log('=== FULL EXTRACTED TEXT ===');
+      console.log(content);
+      console.log('=== END OF EXTRACTED TEXT ===');
       
+      setCurrentStep('PDF parsing successful!');
+      
+      // For now, just show success - we'll add AI processing later
       setCurrentStep('Complete!');
       setTimeout(() => {
         setShowPreview(true);

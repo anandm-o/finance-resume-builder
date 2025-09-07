@@ -9,6 +9,7 @@ import {
   getResume as getFirestoreResume
 } from '../lib/firestore';
 import { useFirebase } from '../contexts/FirebaseContext';
+import { templateResume } from '../data/templateResume';
 
 interface ResumeStore {
   // Resume data
@@ -77,154 +78,13 @@ interface ResumeStore {
   // Reset
   resetResume: () => void;
   loadSampleResume: () => void;
+  
+  // AI Integration
+  updateResumeFromAI: (parsedData: any, enhancedData: any) => void;
 }
 
-// Sample resume data as specified in requirements
-const sampleResume: Resume = {
-  id: 'sample-1',
-  meta: {
-    templateId: 'finance-docx-locked',
-    roleTarget: 'Investment Banking Analyst',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  header: {
-    name: 'John Doe',
-    email: 'john.doe@email.com',
-    phone: '(555) 123-4567',
-    location: 'Vancouver, BC',
-    linkedin: 'linkedin.com/in/johndoe',
-  },
-  education: [
-    {
-      school: 'University of British Columbia',
-      degree: 'Bachelor of Commerce',
-      major: 'Finance',
-      graduationYear: '2026',
-      gpa: '3.8/4.0',
-      location: 'Vancouver, BC',
-      awards: ["Dean's Honour List"],
-      coursework: ['Economics', 'Accounting', 'Finance', 'Business Management'],
-      competitions: ['Case Competition Winner'],
-    },
-  ],
-  experience: [
-    {
-      id: 'exp-1',
-      company: 'RBC Capital Markets',
-      title: 'Investment Banking Summer Analyst',
-      location: 'Toronto, ON',
-      startDate: 'May 2024',
-      endDate: 'Aug 2024',
-      groupName: 'Technology & Consumer',
-      summary: 'Supported live M&A and financing transactions across technology and consumer sectors, preparing pitch materials and valuation models',
-      bullets: [
-        {
-          id: 'bullet-1',
-          text: 'Led team efforts to analyze $450M software acquisition by creating comprehensive DCF and comparable company models; resulted in 7% valuation accuracy and successful client presentation',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Led team efforts to analyze $450M software acquisition by creating comprehensive DCF and comparable company models; resulted in 7% valuation accuracy and successful client presentation',
-        },
-        {
-          id: 'bullet-2',
-          text: 'Analyzed options available for $200M consumer retail divestiture and recommended optimal buyer strategy based on time and resource considerations; implementation led to successful marketing of asset',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Analyzed options available for $200M consumer retail divestiture and recommended optimal buyer strategy based on time and resource considerations; implementation led to successful marketing of asset',
-        },
-        {
-          id: 'bullet-3',
-          text: 'Developed strategy for marketing to new prospective clients through innovative pitch book design; resulted in increased awareness and capital commitments',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Developed strategy for marketing to new prospective clients through innovative pitch book design; resulted in increased awareness and capital commitments',
-        },
-      ],
-      selectedProjects: [
-        {
-          name: 'Software Acquisition',
-          action: 'Led team to build DCF and comps',
-          result: 'which resulted in 7% valuation accuracy and successful client presentation',
-        },
-        {
-          name: 'Consumer Retail Divestiture',
-          action: 'Analyzed buyer options and recommended strategy',
-          result: 'which made project viable and resulted in successful asset marketing',
-        },
-        {
-          name: 'Client Marketing Strategy',
-          action: 'Created innovative pitch book design',
-          result: 'which led to increased client awareness and capital commitments',
-        },
-      ],
-    },
-    {
-      id: 'exp-2',
-      company: 'PwC',
-      title: 'Deals Intern, Valuations',
-      location: 'Vancouver, BC',
-      startDate: 'Jan 2024',
-      endDate: 'Apr 2024',
-      groupName: 'Deals',
-      summary: 'Conducted valuations for mid-market clients using precedent transactions, multiples, and DCF; summarized results in fairness opinion reports',
-      bullets: [
-        {
-          id: 'bullet-4',
-          text: 'Led team efforts to conduct comprehensive valuations by creating dynamic Excel models; resulted in improved efficiency and accurate client deliverables',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Led team efforts to conduct comprehensive valuations by creating dynamic Excel models; resulted in improved efficiency and accurate client deliverables',
-        },
-        {
-          id: 'bullet-5',
-          text: 'Analyzed valuation methodologies and concluded that DCF approach was most appropriate for technology clients; resulted in company proceeding with project and successful client outcomes',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Analyzed valuation methodologies and concluded that DCF approach was most appropriate for technology clients; resulted in company proceeding with project and successful client outcomes',
-        },
-      ],
-      selectedProjects: [],
-    },
-  ],
-  leadership: [
-    {
-      id: 'lead-1',
-      organization: 'UBC Finance Club',
-      role: 'Vice President, Case Competitions',
-      location: 'Vancouver, BC',
-      startDate: 'Sept 2023',
-      endDate: 'Present',
-      bullets: [
-        {
-          id: 'bullet-6',
-          text: 'Led team efforts to organize annual finance case competition by creating promotional campaigns and managing logistics; resulted in 120+ participants and Big 4 firm sponsorships',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Led team efforts to organize annual finance case competition by creating promotional campaigns and managing logistics; resulted in 120+ participants and Big 4 firm sponsorships',
-        },
-        {
-          id: 'bullet-7',
-          text: 'Recruited over 50 members to club with promotional campaign',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Recruited over 50 members to club with promotional campaign',
-        },
-        {
-          id: 'bullet-8',
-          text: 'Organized conferences, speaker events and community events',
-          enhancementLevel: 'Keep as-is',
-          originalText: 'Organized conferences, speaker events and community events',
-        },
-      ],
-    },
-  ],
-  projects: [],
-  skills: {
-    technical: ['Excel (Advanced)', 'PowerPoint', 'Financial Modeling (DCF, LBO, Comps)'],
-    financeTools: ['Bloomberg Terminal', 'Capital IQ'],
-    languages: ['English'],
-    programming: ['Python (Pandas, NumPy)'],
-  },
-  certifications: [],
-  deals: [],
-  activities: ['CFA Research Challenge (2024)', 'Volunteer — Junior Achievement financial literacy programs'],
-  interests: ['Long-distance running, contemporary art, chess'],
-};
-
+// Use the template resume as the sample resume
+const sampleResume: Resume = templateResume;
 export const useResumeStore = create<ResumeStore>()(
   persist(
     (set, get) => ({
@@ -598,19 +458,20 @@ export const useResumeStore = create<ResumeStore>()(
 
       // AI Integration
       updateResumeFromAI: (parsedData: any, enhancedData: any) => {
+        console.log('Updating resume from AI with data:', parsedData);
         set((state) => ({
           resume: {
             ...state.resume,
-            header: parsedData.header || state.resume.header,
-            education: parsedData.education || state.resume.education,
-            experience: parsedData.experience || state.resume.experience,
-            leadership: parsedData.leadership || state.resume.leadership,
-            projects: parsedData.projects || state.resume.projects,
-            skills: parsedData.skills || state.resume.skills,
-            activities: parsedData.activities || state.resume.activities,
-            interests: parsedData.interests || state.resume.interests,
-            certifications: parsedData.certifications || state.resume.certifications,
-            deals: parsedData.deals || state.resume.deals,
+            header: parsedData.header ? parsedData.header : state.resume.header,
+            education: parsedData.education && parsedData.education.length > 0 ? parsedData.education : state.resume.education,
+            experience: parsedData.experience && parsedData.experience.length > 0 ? parsedData.experience : state.resume.experience,
+            leadership: parsedData.leadership && parsedData.leadership.length > 0 ? parsedData.leadership : state.resume.leadership,
+            projects: parsedData.projects && parsedData.projects.length > 0 ? parsedData.projects : state.resume.projects,
+            skills: parsedData.skills ? parsedData.skills : state.resume.skills,
+            activities: parsedData.activities && parsedData.activities.length > 0 ? parsedData.activities : state.resume.activities,
+            interests: parsedData.interests && parsedData.interests.length > 0 ? parsedData.interests : state.resume.interests,
+            certifications: parsedData.certifications && parsedData.certifications.length > 0 ? parsedData.certifications : state.resume.certifications,
+            deals: parsedData.deals && parsedData.deals.length > 0 ? parsedData.deals : state.resume.deals,
             meta: {
               ...state.resume.meta,
               updatedAt: new Date(),

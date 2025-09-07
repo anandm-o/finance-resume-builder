@@ -10,288 +10,185 @@ export default function ResumePreview() {
       resume.header.phone,
       resume.header.email,
       resume.header.linkedin
-    ].filter(Boolean);
+    ].filter(part => part && part !== '' && !part.startsWith('['));
     return parts.join(' | ');
   };
 
-  const formatEducation = (edu: any) => {
-    const parts = [
-      edu.school,
-      edu.location
-    ].filter(Boolean);
-    
-    const degreeParts = [
-      edu.degree,
-      'in',
-      edu.major
-    ].filter(Boolean);
-    
-    const additionalParts = [
-      edu.gpa && `GPA: ${edu.gpa}`,
-      edu.awards?.join('; '),
-      edu.coursework?.length > 0 && `Competitions/Relevant Coursework: ${edu.coursework.join(' / ')}`
-    ].filter(Boolean);
-    
-    return {
-      schoolLine: parts.join(' — '),
-      degreeLine: degreeParts.join(' '),
-      graduationYear: `Class of ${edu.graduationYear}`,
-      additionalLine: additionalParts.join('; ')
-    };
-  };
-
-  const formatExperience = (exp: any) => {
-    const headerParts = [
-      exp.company,
-      exp.location
-    ].filter(Boolean);
-    
-    const titleParts = [
-      exp.title,
-      exp.groupName && exp.groupName
-    ].filter(Boolean);
-    
-    return {
-      companyLine: headerParts.join(' — '),
-      titleLine: titleParts.join(', '),
-      summary: exp.summary
-    };
-  };
-
-  const formatLeadership = (lead: any) => {
-    const headerParts = [
-      lead.organization,
-      lead.location
-    ].filter(Boolean);
-    
-    return {
-      orgLine: headerParts.join(' — '),
-      roleLine: lead.role,
-      dates: `${lead.startDate} - ${lead.endDate}`
-    };
-  };
-
-  const formatSkills = () => {
-    const skillsParts = [
-      resume.skills.languages?.length > 0 && `${resume.skills.languages.join(' - Fluent/Conversational Proficiency')}`,
-      resume.skills.programming?.join(', '),
-      resume.certifications?.map(c => c.name).join(', ')
-    ].filter(Boolean);
-    
-    const activitiesParts = [
-      ...resume.activities,
-      'Student Clubs, Volunteer Work, Independent Activities'
-    ].filter(Boolean);
-    
-    return {
-      skills: skillsParts.join(', '),
-      activities: activitiesParts.join(', '),
-      interests: resume.interests.join(', ')
-    };
-  };
-
   return (
-    <div className="resume-template">
-      {/* Header */}
-      <div className="resume-name text-center">
-        {resume.header.name || '[Name]'}
-      </div>
+    <div className="resume-template bg-white p-8 shadow-lg" style={{
+      width: '8.5in',
+      minHeight: '11in',
+      fontFamily: 'Times New Roman, serif',
+      fontSize: '11pt',
+      lineHeight: '1.0',
+      margin: '0.5in 0.7in',
+    }}>
       
-      <div className="resume-contact text-center">
-        {formatContact() || '[Phone Number] | [Email Address] | [LinkedIn Link]'}
+      {/* Header */}
+      <div className="text-center mb-2">
+        <div className="text-lg font-bold uppercase" style={{ fontSize: '16pt' }}>
+          {resume.header.name || '[Name]'}
+        </div>
+        <div className="mt-1">
+          {formatContact() || '[Phone Number] | [Email Address] | [LinkedIn Link]'}
+        </div>
       </div>
 
       {/* Education */}
-      {resume.education.length > 0 && (
-        <div className="section-content">
-          <div className="resume-section-title">EDUCATION</div>
-          <hr className="border-t border-black mb-3" />
-          {resume.education.map((edu, index) => {
-            const formatted = formatEducation(edu);
-            return (
-              <div key={index} className="mb-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-semibold">{formatted.schoolLine}</div>
-                    <div className="mb-1">{formatted.degreeLine}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm">{formatted.graduationYear}</div>
-                  </div>
-                </div>
-                {formatted.additionalLine && (
-                  <div className="text-sm mt-2">
-                    {formatted.additionalLine}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      <div className="mb-4">
+        <div className="text-sm font-bold uppercase mb-1" style={{ fontSize: '12pt' }}>
+          EDUCATION
         </div>
-      )}
+        {resume.education.map((edu, index) => (
+          <div key={index} className="mb-4">
+            {/* Line 1: School and Location */}
+            <div className="flex justify-between">
+              <span className="font-semibold">{edu.school || '[University Name]'}</span>
+              <span>{edu.location || '[City], [Province/State/Country]'}</span>
+            </div>
+            
+            {/* Line 2: Degree and Graduation */}
+            <div className="flex justify-between">
+              <span>{edu.degree || 'Bachelor of [Arts/Science] in [Major]'}</span>
+              <span>{edu.graduationYear || 'Class of [Graduation Year]'}</span>
+            </div>
+            
+            {/* Bullets */}
+            {edu.gpa && (
+              <div className="mt-1">
+                <span>• GPA: {edu.gpa}</span>
+              </div>
+            )}
+            {edu.awards && edu.awards.length > 0 && (
+              <div>
+                <span>• Honours/Awards: {edu.awards.join(', ')}</span>
+              </div>
+            )}
+            {edu.coursework && edu.coursework.length > 0 && (
+              <div>
+                <span>• Competitions/Relevant Coursework: {edu.coursework.join(', ')}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* Employment Experience */}
-      {resume.experience.length > 0 && (
-        <div className="section-content">
-          <div className="resume-section-title">EMPLOYMENT EXPERIENCE</div>
-          <hr className="border-t border-black mb-3" />
-          {resume.experience.map((exp, index) => {
-            const formatted = formatExperience(exp);
-            return (
-              <div key={index} className="mb-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-semibold">{formatted.companyLine}</div>
-                    <div className="mb-2">{formatted.titleLine}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm">{exp.startDate} - {exp.endDate}</div>
-                  </div>
-                </div>
-                
-                {formatted.summary && (
-                  <div className="resume-bullet mb-2">{formatted.summary}</div>
-                )}
-                
-                {exp.selectedProjects && exp.selectedProjects.length > 0 && (
-                  <div className="selected-experience">
-                    <div className="resume-bullet mb-2">
-                      Selected {resume.meta.roleTarget.includes('Banking') ? 'Client / Project / Transaction' : 'Project'} Experience:
-                    </div>
-                    {exp.selectedProjects.map((project, pIndex) => (
-                      <div key={pIndex} className="project-item ml-8 mb-2">
-                        <div className="project-name">{project.name}</div>
-                        <div className="ml-4 resume-sub-bullet">
-                          {project.action} → {project.result}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                {exp.bullets.map((bullet, bIndex) => (
-                  <div key={bIndex} className="resume-bullet">
-                    {bullet.text}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
+      <div className="mb-4">
+        <div className="text-sm font-bold uppercase mb-1" style={{ fontSize: '12pt' }}>
+          EMPLOYMENT EXPERIENCE
         </div>
-      )}
+        {resume.experience.map((exp, index) => (
+          <div key={index} className="mb-4">
+            {/* Line 1: Company and Location */}
+            <div className="flex justify-between">
+              <span className="font-semibold">{exp.company || '[Company Name]'}</span>
+              <span>{exp.location || '[City], [Province/State/Country]'}</span>
+            </div>
+            
+            {/* Line 2: Title and Dates */}
+            <div className="flex justify-between">
+              <span>{exp.title || '[Position Title]'}</span>
+              <span>{exp.startDate && exp.endDate ? `${exp.startDate} – ${exp.endDate}` : '[Start Date] – [End Date]'}</span>
+            </div>
+            
+            {/* Bullets */}
+            <div className="mt-1">
+              {exp.bullets.map((bullet, bIndex) => (
+                <div key={bIndex} className="mb-1">
+                  <span>• {bullet.text}</span>
+                </div>
+              ))}
+              
+              {/* Selected Projects */}
+              {exp.selectedProjects && exp.selectedProjects.length > 0 && (
+                <div className="ml-4">
+                  {exp.selectedProjects.map((project, pIndex) => (
+                    <div key={pIndex} className="mb-2">
+                      <div className="mb-1">
+                        <span>o {project.name}</span>
+                      </div>
+                      <div className="ml-4">
+                        <span>§ {project.action}</span>
+                      </div>
+                      {pIndex < exp.selectedProjects!.length - 1 && <div className="mb-2"></div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Extra-Curricular Experience */}
-      {resume.leadership.length > 0 && (
-        <div className="section-content">
-          <div className="resume-section-title">EXTRA-CURRICULAR EXPERIENCE</div>
-          <hr className="border-t border-black mb-3" />
-          {resume.leadership.map((lead, index) => {
-            const formatted = formatLeadership(lead);
-            return (
-              <div key={index} className="mb-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-semibold">{formatted.orgLine}</div>
-                    <div className="mb-2">{formatted.roleLine}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm">{formatted.dates}</div>
-                  </div>
-                </div>
-                {lead.bullets.map((bullet, bIndex) => (
-                  <div key={bIndex} className="resume-bullet">
-                    {bullet.text}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
+      <div className="mb-4">
+        <div className="text-sm font-bold uppercase mb-1" style={{ fontSize: '12pt' }}>
+          EXTRA-CURRICULAR EXPERIENCE
         </div>
-      )}
-
-      {/* Projects */}
-      {resume.projects.length > 0 && (
-        <div className="section-content">
-          <div className="resume-section-title">PROJECTS</div>
-          <hr className="border-t border-black mb-3" />
-          {resume.projects.map((project, index) => (
-            <div key={index} className="mb-4">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="font-semibold">{project.name}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">{project.startDate} - {project.endDate}</div>
-                </div>
-              </div>
-              {project.bullets.map((bullet, bIndex) => (
-                <div key={bIndex} className="resume-bullet">
-                  {bullet.text}
+        {resume.extraCurricular.map((extra, index) => (
+          <div key={index} className="mb-4">
+            {/* Line 1: Organization and Location */}
+            <div className="flex justify-between">
+              <span className="font-semibold">{extra.organization || '[Student Club Name]'}</span>
+              <span>{extra.location || '[City], [Province/State/Country]'}</span>
+            </div>
+            
+            {/* Line 2: Role and Dates */}
+            <div className="flex justify-between">
+              <span>{extra.role || '[Position Title]'}</span>
+              <span>{extra.startDate && extra.endDate ? `${extra.startDate} – ${extra.endDate}` : '[Start Date] – [End Date]'}</span>
+            </div>
+            
+            {/* Bullets */}
+            <div className="mt-1">
+              {extra.bullets.map((bullet, bIndex) => (
+                <div key={bIndex} className="mb-1">
+                  <span>• {bullet}</span>
                 </div>
               ))}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Skills, Activities & Interests */}
-      <div className="section-content">
-        <div className="resume-section-title">SKILLS, ACTIVITIES & INTERESTS</div>
-        <hr className="border-t border-black mb-3" />
-        {(() => {
-          const formatted = formatSkills();
-          return (
-            <>
-              {formatted.skills && (
-                <div className="skills-section">
-                  <span className="font-semibold">Skills:</span> {formatted.skills}
-                </div>
-              )}
-              {formatted.activities && (
-                <div className="skills-section">
-                  <span className="font-semibold">Activities:</span> {formatted.activities}
-                </div>
-              )}
-              {formatted.interests && (
-                <div className="skills-section">
-                  <span className="font-semibold">Interests:</span> {formatted.interests}
-                </div>
-              )}
-            </>
-          );
-        })()}
+          </div>
+        ))}
       </div>
 
-      {/* Deals/Transactions */}
-      {resume.deals.length > 0 && (
-        <div className="section-content">
-          <div className="resume-section-title">DEALS & TRANSACTIONS</div>
-          <hr className="border-t border-black mb-3" />
-          {resume.deals.map((deal, index) => (
-            <div key={index} className="mb-4">
-              <div className="font-semibold">
-                {deal.type} — {deal.size} — {deal.role}
-              </div>
-              <div className="resume-bullet">
-                {deal.tasks.join('; ')}; {deal.outcome}
-              </div>
-            </div>
-          ))}
+      {/* Skills, Activities & Interests */}
+      <div className="mb-4">
+        <div className="text-sm font-bold uppercase mb-1" style={{ fontSize: '12pt' }}>
+          SKILLS, ACTIVITIES & INTERESTS
         </div>
-      )}
-
-      {/* Certifications */}
-      {resume.certifications.length > 0 && (
-        <div className="section-content">
-          <div className="resume-section-title">CERTIFICATIONS</div>
-          <hr className="border-t border-black mb-3" />
-          {resume.certifications.map((cert, index) => (
-            <div key={index} className="mb-2">
-              {cert.name} — {cert.issuer} ({cert.date})
-            </div>
-          ))}
+        
+        {/* Skills Line */}
+        <div className="mb-1">
+          <span className="font-semibold">Skills:</span> {
+            [
+              ...(resume.skills.technical || []),
+              ...(resume.skills.financeTools || []),
+              ...(resume.skills.languages || []),
+              ...(resume.skills.programming || [])
+            ].filter(Boolean).join(', ') || 
+            '[Languages – Fluent/Conversational Proficiency], [Programming languages], [Certifications]'
+          }
         </div>
-      )}
+        
+        {/* Activities Line */}
+        <div className="mb-1">
+          <span className="font-semibold">Activities:</span> {
+            resume.activities.length > 0 
+              ? resume.activities.join(', ')
+              : 'Student Clubs, Volunteer Work, Independent Activities'
+          }
+        </div>
+        
+        {/* Interests Line */}
+        <div className="mb-1">
+          <span className="font-semibold">Interests:</span> {
+            resume.interests.length > 0 
+              ? resume.interests.join(', ')
+              : 'Keep this to 1-2 lines and be specific, hobbies and interests; do not go overboard'
+          }
+        </div>
+      </div>
     </div>
   );
 }

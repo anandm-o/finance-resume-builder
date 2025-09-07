@@ -56,6 +56,16 @@ export interface Experience {
   }[];
 }
 
+export interface ExtraCurricular {
+  id: string;
+  organization: string;
+  role: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  bullets: string[];
+}
+
 export interface Leadership {
   id: string;
   organization: string;
@@ -106,11 +116,8 @@ export interface Resume {
   header: ContactInfo;
   education: Education[];
   experience: Experience[];
-  leadership: Leadership[];
-  projects: Project[];
+  extraCurricular: ExtraCurricular[];
   skills: Skills;
-  certifications: Certification[];
-  deals: Deal[];
   activities: string[];
   interests: string[];
 }
@@ -165,11 +172,8 @@ export interface ParsedResume {
   };
   education: Education[];
   experience: Experience[];
-  leadership: Leadership[];
-  projects: Project[];
+  extraCurricular: ExtraCurricular[];
   skills: Skills;
   activities: string[];
   interests: string[];
-  certifications: Certification[];
-  deals: Deal[];
 }

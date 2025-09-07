@@ -1,18 +1,7 @@
 import { ParsedResume } from '../types/resume';
 
-export interface AIEnhancement {
-  enhancedBullets: string[];
-  suggestedProjects: string[];
-  suggestedSkills: string[];
-  suggestedDeals: string[];
-  gapAnalysis: string[];
-}
-
 export class ResumeAI {
-  /**
-   * Parse uploaded resume and extract structured information
-   */
-  static async parseResume(resumeText: string, targetRole: string): Promise<ParsedResume> {
+  static async parseResume(resumeText: string, targetRole: string = 'Finance Analyst'): Promise<ParsedResume> {
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
@@ -27,8 +16,7 @@ export class ResumeAI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to parse resume');
+        throw new Error('Failed to process request with AI');
       }
 
       const result = await response.json();
@@ -39,10 +27,7 @@ export class ResumeAI {
     }
   }
 
-  /**
-   * Enhance existing resume content with AI suggestions
-   */
-  static async enhanceResume(resume: any, targetRole: string): Promise<AIEnhancement> {
+  static async enhanceResume(resume: ParsedResume, targetRole: string = 'Finance Analyst'): Promise<any> {
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
@@ -57,22 +42,17 @@ export class ResumeAI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to enhance resume');
+        throw new Error('Failed to process request with AI');
       }
 
-      const result = await response.json();
-      return result;
+      return await response.json();
     } catch (error) {
       console.error('Error enhancing resume with AI:', error);
       throw new Error('Failed to enhance resume. Please try again.');
     }
   }
 
-  /**
-   * Generate specific bullet points from user notes
-   */
-  static async generateBulletPoints(notes: string, context: string, targetRole: string): Promise<string[]> {
+  static async generateBulletPoints(notes: string, context: string, targetRole: string = 'Finance Analyst'): Promise<string[]> {
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
@@ -87,26 +67,17 @@ export class ResumeAI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate bullet points');
+        throw new Error('Failed to process request with AI');
       }
 
-      const result = await response.json();
-      return result;
+      return await response.json();
     } catch (error) {
       console.error('Error generating bullet points with AI:', error);
       throw new Error('Failed to generate bullet points. Please try again.');
     }
   }
 
-  /**
-   * Analyze resume for ATS optimization
-   */
-  static async analyzeATS(resume: any, targetRole: string): Promise<{
-    score: number;
-    suggestions: string[];
-    missingKeywords: string[];
-  }> {
+  static async analyzeATS(resume: ParsedResume, targetRole: string = 'Finance Analyst'): Promise<any> {
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
@@ -121,15 +92,13 @@ export class ResumeAI {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to analyze ATS optimization');
+        throw new Error('Failed to process request with AI');
       }
 
-      const result = await response.json();
-      return result;
+      return await response.json();
     } catch (error) {
       console.error('Error analyzing ATS with AI:', error);
-      throw new Error('Failed to analyze ATS optimization. Please try again.');
+      throw new Error('Failed to analyze ATS. Please try again.');
     }
   }
 }
