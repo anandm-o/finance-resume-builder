@@ -1,140 +1,103 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { NextRequest, NextResponse } from "next/server";
+import { google } from "@ai-sdk/google";
+import { generateObject } from "ai";
+import { z } from "zod";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-// Minimal schema matching your ParsedResume shape
-const ParsedResumeSchema = {
-  type: 'object',
-  properties: {
-    header: {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        email: { type: 'string' },
-        phone: { type: 'string' },
-        location: { type: 'string' },
-        linkedin: { type: 'string' },
-      },
-      required: ['name', 'email', 'phone', 'location', 'linkedin'],
-    },
-    education: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          school: { type: 'string' },
-          degree: { type: 'string' },
-          major: { type: 'string' },
-          graduationYear: { type: 'string' },
-          gpa: { type: 'string' },
-          location: { type: 'string' },
-          awards: { type: 'array', items: { type: 'string' } },
-          coursework: { type: 'array', items: { type: 'string' } },
-          competitions: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['school'],
-      },
-    },
-    experience: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          company: { type: 'string' },
-          title: { type: 'string' },
-          location: { type: 'string' },
-          startDate: { type: 'string' },
-          endDate: { type: 'string' },
-          groupName: { type: 'string' },
-          summary: { type: 'string' },
-          bullets: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                text: { type: 'string' },
-                enhancementLevel: { type: 'string' },
-              },
-              required: ['id', 'text'],
-            },
-          },
-        },
-        required: ['company'],
-      },
-    },
-    extraCurricular: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          organization: { type: 'string' },
-          role: { type: 'string' },
-          location: { type: 'string' },
-          startDate: { type: 'string' },
-          endDate: { type: 'string' },
-          bullets: { type: 'array', items: { type: 'string' } },
-        },
-        required: ['organization'],
-      },
-    },
-    skills: {
-      type: 'object',
-      properties: {
-        technical: { type: 'array', items: { type: 'string' } },
-        financeTools: { type: 'array', items: { type: 'string' } },
-        languages: { type: 'array', items: { type: 'string' } },
-        programming: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['technical', 'financeTools', 'languages', 'programming'],
-    },
+// Individual Zod schemas for each resume section
+const HeaderSchema = z.object({
+  name: z.string(),
+  email: z.string(),
+  phone: z.string(),
+  location: z.string(),
+  linkedin: z.string(),
+});
 
-    activities: { type: 'array', items: { type: 'string' } },
-    interests: { type: 'array', items: { type: 'string' } },
-  },
-  required: [
-    'header',
-    'education',
-    'experience',
-    'extraCurricular',
-    'skills',
-    'activities',
-    'interests',
-  ],
-} as const;
+const EducationSchema = z.array(
+  z.object({
+    school: z.string(),
+    degree: z.string().optional(),
+    major: z.string().optional(),
+    graduationYear: z.string().optional(),
+    gpa: z.string().optional(),
+    location: z.string().optional(),
+    awards: z.array(z.string()).optional(),
+    coursework: z.array(z.string()).optional(),
+    competitions: z.array(z.string()).optional(),
+  }),
+);
 
-const PARSER_SYSTEM_PROMPT = `
-You are an expert finance resume parser. Return ONLY valid JSON matching the provided schema.
+const ExperienceSchema = z.array(
+  z.object({
+    company: z.string(),
+    title: z.string().optional(),
+    location: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    groupName: z.string().optional(),
+    summary: z.string().optional(),
+    bullets: z
+      .array(
+        z.object({
+          id: z.string(),
+          text: z.string(),
+          enhancementLevel: z.string().optional(),
+        }),
+      )
+      .optional(),
+  }),
+);
 
-CRITICAL JSON RULES:
-- Return ONLY valid JSON - no markdown, no code fences, no commentary
-- Escape all special characters: newlines as \\n, quotes as \\", backslashes as \\\\
-- Keep all text content on single lines - no actual line breaks in JSON values
-- Use empty strings "" for missing fields, empty arrays [] for missing lists
-- All bullet points must be properly escaped strings
+const ExtraCurricularSchema = z.array(
+  z.object({
+    organization: z.string(),
+    role: z.string().optional(),
+    location: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    bullets: z.array(z.string()).optional(),
+  }),
+);
+
+const SkillsSchema = z.object({
+  technical: z.array(z.string()),
+  financeTools: z.array(z.string()),
+  languages: z.array(z.string()),
+  programming: z.array(z.string()),
+});
+
+const ActivitiesSchema = z.array(z.string());
+const InterestsSchema = z.array(z.string());
+
+// Combined schema for final validation
+const ParsedResumeSchema = z.object({
+  header: HeaderSchema,
+  education: EducationSchema,
+  experience: ExperienceSchema,
+  extraCurricular: ExtraCurricularSchema,
+  skills: SkillsSchema,
+  activities: ActivitiesSchema,
+  interests: InterestsSchema,
+});
+
+const SECTION_PARSER_PROMPT = `
+You are an expert finance resume parser. Extract the specific section information according to the provided schema.
 
 CONTENT RULES:
 - Extract exact text from resume (no rewriting or enhancement)
 - Keep dates as simple strings: "Jan 2025 - Apr 2025"
 - Keep amounts as simple strings: "$9M", "100+"
 - Convert bullets to: {"id": "unique-id", "text": "exact bullet text", "enhancementLevel": "original"}
-
-SECTIONS TO EXTRACT:
-- EDUCATION: School, degree, major, graduation year, GPA, location, awards, coursework, competitions
-- EMPLOYMENT EXPERIENCE: Company, title, location, dates, bullets
-- EXTRA-CURRICULAR: Organization, role, location, dates, bullets (from LEADERSHIP, PROJECTS, CLUBS, etc.)
-- SKILLS: Technical, finance tools, languages, programming
-- ACTIVITIES & INTERESTS: Simple arrays of strings
-
-Remember: Your response must be valid JSON that can be parsed by JSON.parse()
+- Use empty strings "" for missing fields, empty arrays [] for missing lists
+- Focus only on the requested section, ignore other sections
 `;
 
 const ENHANCER_SYSTEM_PROMPT = `
 You are an expert finance resume consultant for IB/PE/AM/CorpFin.
 - Strong action verbs, quantified results, finance terminology.
 - 18–26 words per bullet, no first-person.
-- Return ONLY JSON as requested.
+- Return structured JSON as requested.
 `;
 
 export async function POST(request: NextRequest) {
@@ -152,27 +115,28 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Gemini API key not configured on server' },
-        { status: 500 }
+        { error: "Gemini API key not configured on server" },
+        { status: 500 },
       );
     }
-    const genAI = new GoogleGenerativeAI(apiKey);
 
-    if (action === 'parseResume') {
-      if (typeof data !== 'string') {
-        return NextResponse.json({ error: 'Expected resume text' }, { status: 400 });
+    // Configure the Google provider - it uses GOOGLE_GENERATIVE_AI_API_KEY env var automatically
+    // Set the environment variable for this request
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY = apiKey;
+    const model = google("gemini-1.5-flash");
+
+    if (action === "parseResume") {
+      if (typeof data !== "string") {
+        return NextResponse.json(
+          { error: "Expected resume text" },
+          { status: 400 },
+        );
       }
-      
-      // Step 1: Clean and extract readable text from the malformed PDF text
-      const textCleaningModel = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 2048,
-        },
-      });
 
-      const textCleaningPrompt = `
+      // Step 1: Clean and extract readable text from the malformed PDF text
+      const { object: cleanedResult } = await generateObject({
+        model,
+        prompt: `
 You are a text cleaning expert. I have extracted text from a PDF resume, but it's malformed with missing spaces, character spacing issues, and formatting problems.
 
 Your task: Clean this text and make it readable and properly formatted.
@@ -187,188 +151,220 @@ Rules:
 Malformed text:
 ${data}
 
-Cleaned text:`;
+Cleaned text:`,
+        schema: z.object({
+          text: z
+            .string()
+            .describe("The cleaned and properly formatted resume text"),
+        }),
+        temperature: 0.1,
+      });
 
-      const textCleaningResp = await textCleaningModel.generateContent([{ text: textCleaningPrompt }]);
-      const cleanedText = textCleaningResp.response.text();
-      
-      console.log('Cleaned text length:', cleanedText.length);
-      console.log('Cleaned text preview:', cleanedText.substring(0, 500));
+      const cleanedText = cleanedResult.text;
 
-      // Step 2: Parse the cleaned text into structured JSON
-      const parsingModel = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: PARSER_SYSTEM_PROMPT,
-        generationConfig: {
+      console.log("Cleaned text length:", cleanedText.length);
+      console.log("Cleaned text preview:", cleanedText.substring(0, 500));
+
+      // Step 2: Parse each section in parallel using Promise.all
+      const basePrompt = `Target role: ${targetRole || "Finance Analyst"}
+
+Clean resume text:
+${cleanedText}`;
+
+      const [
+        headerResult,
+        educationResult,
+        experienceResult,
+        extraCurricularResult,
+        skillsResult,
+        activitiesResult,
+        interestsResult,
+      ] = await Promise.all([
+        // Parse Header
+        generateObject({
+          model,
+          system: SECTION_PARSER_PROMPT,
+          prompt: `${basePrompt}
+
+Extract the HEADER section (name, email, phone, location, linkedin).`,
+          schema: z.object({ header: HeaderSchema }),
           temperature: 0.1,
-          responseMimeType: 'application/json',
-          responseSchema: ParsedResumeSchema as any,
-          maxOutputTokens: 2048,
-        },
-      });
+        }),
 
-      const resp = await parsingModel.generateContent([
-        { text: `Target role: ${targetRole || 'Finance Analyst'}` },
-        { text: `Clean resume text:\n${cleanedText}` },
-      ]);
+        // Parse Education
+        generateObject({
+          model,
+          system: SECTION_PARSER_PROMPT,
+          prompt: `${basePrompt}
 
-      const json = resp.response.text(); // guaranteed JSON text
-      console.log('Gemini response length:', json.length);
-      
-      try {
-        return NextResponse.json(JSON.parse(json));
-      } catch (parseError: any) {
-        console.error('JSON parse error:', parseError);
-        console.error('Response text (first 1000 chars):', json.substring(0, 1000));
-        console.error('Response text (last 1000 chars):', json.substring(Math.max(0, json.length - 1000)));
-        
-        // Try to fix common JSON issues
-        let fixedText = json;
-        
-        // Fix common JSON issues - be more conservative
-        fixedText = fixedText
-          .replace(/\n/g, ' ')  // Replace newlines with spaces
-          .replace(/\r/g, ' ')  // Replace carriage returns with spaces
-          .replace(/\t/g, ' ')  // Replace tabs with spaces
-          .replace(/\s+/g, ' ') // Multiple spaces to single space
-          .trim();
-        
-        // Remove any trailing incomplete JSON
-        const lastBrace = fixedText.lastIndexOf('}');
-        if (lastBrace > 0) {
-          fixedText = fixedText.substring(0, lastBrace + 1);
-        }
-        
-        // Try parsing again
-        try {
-          return NextResponse.json(JSON.parse(fixedText));
-        } catch (secondError) {
-          // If still failing, try a more aggressive approach
-          try {
-            // Remove any content after the last complete object
-            const jsonStart = fixedText.indexOf('{');
-            const jsonEnd = fixedText.lastIndexOf('}');
-            if (jsonStart >= 0 && jsonEnd > jsonStart) {
-              const cleanJson = fixedText.substring(jsonStart, jsonEnd + 1);
-              return NextResponse.json(JSON.parse(cleanJson));
-            }
-          } catch (thirdError) {
-            console.error('All JSON parsing attempts failed');
-            return NextResponse.json(
-              { error: 'AI response was malformed. Please try again or upload a shorter resume.' },
-              { status: 500 }
-            );
-          }
-        }
-      }
-    }
-
-    if (action === 'enhanceResume') {
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: ENHANCER_SYSTEM_PROMPT,
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: 'application/json',
-          maxOutputTokens: 2048,
-        },
-      });
-
-      const resp = await model.generateContent([
-        {
-          text:
-            `Enhance for ${targetRole || 'Investment Banking Analyst'}.\n` +
-            `Return JSON with keys: enhancedBullets (string[]), suggestedProjects (string[]), ` +
-            `suggestedSkills (string[]), suggestedDeals (string[]), gapAnalysis (string[]).\n`,
-        },
-        { text: `Current resume JSON:\n${JSON.stringify(data ?? {}, null, 2)}` },
-      ]);
-
-      const json = resp.response.text();
-      try {
-        return NextResponse.json(JSON.parse(json));
-      } catch (parseError: any) {
-        console.error('JSON parse error in enhanceResume:', parseError);
-        return NextResponse.json(
-          { error: 'AI response was malformed. Please try again.' },
-          { status: 500 }
-        );
-      }
-    }
-
-    if (action === 'generateBulletPoints') {
-      const { notes, context } = (data || {}) as { notes?: string; context?: string };
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: ENHANCER_SYSTEM_PROMPT,
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: 'application/json',
-          maxOutputTokens: 1024,
-        },
-      });
-
-      const resp = await model.generateContent([
-        {
-          text:
-            `Generate 3–5 bullets for ${targetRole || 'IB Analyst'} from the notes/context. ` +
-            `Return ONLY a JSON array of strings.`,
-        },
-        { text: `Notes:\n${notes || ''}\nContext:\n${context || ''}` },
-      ]);
-
-      const json = resp.response.text();
-      try {
-        return NextResponse.json(JSON.parse(json));
-      } catch (parseError: any) {
-        console.error('JSON parse error in generateBulletPoints:', parseError);
-        return NextResponse.json(
-          { error: 'AI response was malformed. Please try again.' },
-          { status: 500 }
-        );
-      }
-    }
-
-    if (action === 'analyzeATS') {
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: ENHANCER_SYSTEM_PROMPT,
-        generationConfig: {
+Extract the EDUCATION section (schools, degrees, majors, graduation years, GPA, locations, awards, coursework, competitions).`,
+          schema: z.object({ education: EducationSchema }),
           temperature: 0.1,
-          responseMimeType: 'application/json',
-          maxOutputTokens: 1024,
-        },
-      });
+        }),
 
-      const resp = await model.generateContent([
-        {
-          text:
-            `Analyze ATS fitness for ${targetRole || 'IB Analyst'} and return JSON: ` +
-            `{ "score": number, "suggestions": string[], "missingKeywords": string[] }`,
-        },
-        { text: `Resume JSON:\n${JSON.stringify(data ?? {}, null, 2)}` },
+        // Parse Experience
+        generateObject({
+          model,
+          system: SECTION_PARSER_PROMPT,
+          prompt: `${basePrompt}
+
+Extract the EMPLOYMENT EXPERIENCE section (companies, titles, locations, dates, bullets).`,
+          schema: z.object({ experience: ExperienceSchema }),
+          temperature: 0.1,
+        }),
+
+        // Parse Extra Curricular
+        generateObject({
+          model,
+          system: SECTION_PARSER_PROMPT,
+          prompt: `${basePrompt}
+
+Extract the EXTRA-CURRICULAR section (leadership, projects, clubs, organizations, roles, locations, dates, bullets).`,
+          schema: z.object({ extraCurricular: ExtraCurricularSchema }),
+          temperature: 0.1,
+        }),
+
+        // Parse Skills
+        generateObject({
+          model,
+          system: SECTION_PARSER_PROMPT,
+          prompt: `${basePrompt}
+
+Extract the SKILLS section (technical skills, finance tools, languages, programming languages).`,
+          schema: z.object({ skills: SkillsSchema }),
+          temperature: 0.1,
+        }),
+
+        // Parse Activities
+        generateObject({
+          model,
+          system: SECTION_PARSER_PROMPT,
+          prompt: `${basePrompt}
+
+Extract the ACTIVITIES section (activities, hobbies, interests).`,
+          schema: z.object({ activities: ActivitiesSchema }),
+          temperature: 0.1,
+        }),
+
+        // Parse Interests
+        generateObject({
+          model,
+          system: SECTION_PARSER_PROMPT,
+          prompt: `${basePrompt}
+
+Extract the INTERESTS section (personal interests, hobbies).`,
+          schema: z.object({ interests: InterestsSchema }),
+          temperature: 0.1,
+        }),
       ]);
 
-      const json = resp.response.text();
-      try {
-        return NextResponse.json(JSON.parse(json));
-      } catch (parseError: any) {
-        console.error('JSON parse error in analyzeATS:', parseError);
-        return NextResponse.json(
-          { error: 'AI response was malformed. Please try again.' },
-          { status: 500 }
-        );
-      }
+      // Combine all results
+      const parsedResume = {
+        header: headerResult.object.header,
+        education: educationResult.object.education,
+        experience: experienceResult.object.experience,
+        extraCurricular: extraCurricularResult.object.extraCurricular,
+        skills: skillsResult.object.skills,
+        activities: activitiesResult.object.activities,
+        interests: interestsResult.object.interests,
+      };
+
+      // Validate the combined result
+      const validatedResume = ParsedResumeSchema.parse(parsedResume);
+
+      console.log("Successfully parsed resume with parallel AI SDK calls");
+      return NextResponse.json(validatedResume);
     }
 
-    return NextResponse.json({ error: 'Invalid action specified' }, { status: 400 });
-  } catch (err: any) {
-    console.error('Gemini API error:', err);
-    // only use the safe variable
-    console.error('Error context:', { action: actionSafe || 'unknown' });
+    if (action === "enhanceResume") {
+      const enhanceSchema = z.object({
+        enhancedBullets: z.array(z.string()),
+        suggestedProjects: z.array(z.string()),
+        suggestedSkills: z.array(z.string()),
+        suggestedDeals: z.array(z.string()),
+        gapAnalysis: z.array(z.string()),
+      });
+
+      const { object: enhancedResume } = await generateObject({
+        model,
+        system: ENHANCER_SYSTEM_PROMPT,
+        prompt: `Enhance for ${targetRole || "Investment Banking Analyst"}.
+
+Current resume JSON:
+${JSON.stringify(data ?? {}, null, 2)}`,
+        schema: enhanceSchema,
+        temperature: 0.2,
+      });
+
+      return NextResponse.json(enhancedResume);
+    }
+
+    if (action === "generateBulletPoints") {
+      const { notes, context } = (data || {}) as {
+        notes?: string;
+        context?: string;
+      };
+
+      const { object: bulletPoints } = await generateObject({
+        model,
+        system: ENHANCER_SYSTEM_PROMPT,
+        prompt: `Generate 3–5 bullets for ${
+          targetRole || "IB Analyst"
+        } from the notes/context.
+
+Notes:
+${notes || ""}
+
+Context:
+${context || ""}`,
+        schema: z.object({
+          bullets: z.array(z.string()).describe("Array of 3-5 bullet points"),
+        }),
+        temperature: 0.2,
+      });
+
+      return NextResponse.json(bulletPoints);
+    }
+
+    if (action === "analyzeATS") {
+      const atsSchema = z.object({
+        score: z.number().describe("ATS fitness score from 0-100"),
+        suggestions: z
+          .array(z.string())
+          .describe("Array of improvement suggestions"),
+        missingKeywords: z
+          .array(z.string())
+          .describe("Array of missing keywords"),
+      });
+
+      const { object: atsAnalysis } = await generateObject({
+        model,
+        system: ENHANCER_SYSTEM_PROMPT,
+        prompt: `Analyze ATS fitness for ${targetRole || "IB Analyst"}.
+
+Resume JSON:
+${JSON.stringify(data ?? {}, null, 2)}`,
+        schema: atsSchema,
+        temperature: 0.1,
+      });
+
+      return NextResponse.json(atsAnalysis);
+    }
+
     return NextResponse.json(
-      { error: 'Failed to process request with AI', details: err?.message || 'unknown' },
-      { status: 500 }
+      { error: "Invalid action specified" },
+      { status: 400 },
+    );
+  } catch (err: any) {
+    console.error("Gemini API error:", err);
+    // only use the safe variable
+    console.error("Error context:", { action: actionSafe || "unknown" });
+    return NextResponse.json(
+      {
+        error: "Failed to process request with AI",
+        details: err?.message || "unknown",
+      },
+      { status: 500 },
     );
   }
 }
