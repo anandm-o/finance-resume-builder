@@ -106,19 +106,28 @@ const ParsedResumeSchema = {
 
 const PARSER_SYSTEM_PROMPT = `
 You are an expert finance resume parser. Return ONLY valid JSON matching the provided schema.
-- Do not include markdown, code fences, or commentary.
-- Extract exact text from the resume (no rewriting).
-- Use empty strings for missing scalar fields and empty arrays for missing lists.
-- Keep dates and amounts as free-form strings if needed (e.g., "Jan 2025 – Apr 2025", "$9M").
-- Convert bullets into objects: { id: "<stable-id>", text: "<exact bullet>", enhancementLevel: "original" }.
 
-TEMPLATE STRUCTURE:
+CRITICAL JSON RULES:
+- Return ONLY valid JSON - no markdown, no code fences, no commentary
+- Escape all special characters: newlines as \\n, quotes as \\", backslashes as \\\\
+- Keep all text content on single lines - no actual line breaks in JSON values
+- Use empty strings "" for missing fields, empty arrays [] for missing lists
+- All bullet points must be properly escaped strings
+
+CONTENT RULES:
+- Extract exact text from resume (no rewriting or enhancement)
+- Keep dates as simple strings: "Jan 2025 - Apr 2025"
+- Keep amounts as simple strings: "$9M", "100+"
+- Convert bullets to: {"id": "unique-id", "text": "exact bullet text", "enhancementLevel": "original"}
+
+SECTIONS TO EXTRACT:
 - EDUCATION: School, degree, major, graduation year, GPA, location, awards, coursework, competitions
-- EMPLOYMENT EXPERIENCE: Company, title, location, dates, bullets (with optional selected projects)
-- EXTRA-CURRICULAR EXPERIENCE: Organization, role, location, dates, bullets
-- SKILLS, ACTIVITIES & INTERESTS: Technical skills, finance tools, languages, programming, activities, interests
+- EMPLOYMENT EXPERIENCE: Company, title, location, dates, bullets
+- EXTRA-CURRICULAR: Organization, role, location, dates, bullets (from LEADERSHIP, PROJECTS, CLUBS, etc.)
+- SKILLS: Technical, finance tools, languages, programming
+- ACTIVITIES & INTERESTS: Simple arrays of strings
 
-For extraCurricular, extract from sections like "LEADERSHIP", "PROJECTS", "CLUBS", "VOLUNTEER WORK", etc.
+Remember: Your response must be valid JSON that can be parsed by JSON.parse()
 `;
 
 const ENHANCER_SYSTEM_PROMPT = `
@@ -153,20 +162,54 @@ export async function POST(request: NextRequest) {
       if (typeof data !== 'string') {
         return NextResponse.json({ error: 'Expected resume text' }, { status: 400 });
       }
-      const model = genAI.getGenerativeModel({
+      
+      // Step 1: Clean and extract readable text from the malformed PDF text
+      const textCleaningModel = genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+        },
+      });
+
+      const textCleaningPrompt = `
+You are a text cleaning expert. I have extracted text from a PDF resume, but it's malformed with missing spaces, character spacing issues, and formatting problems.
+
+Your task: Clean this text and make it readable and properly formatted.
+
+Rules:
+- Add proper spacing between words
+- Fix character spacing issues
+- Keep the original content but make it readable
+- Maintain the structure (sections, bullet points, etc.)
+- Return ONLY the cleaned text, no explanations
+
+Malformed text:
+${data}
+
+Cleaned text:`;
+
+      const textCleaningResp = await textCleaningModel.generateContent([{ text: textCleaningPrompt }]);
+      const cleanedText = textCleaningResp.response.text();
+      
+      console.log('Cleaned text length:', cleanedText.length);
+      console.log('Cleaned text preview:', cleanedText.substring(0, 500));
+
+      // Step 2: Parse the cleaned text into structured JSON
+      const parsingModel = genAI.getGenerativeModel({
         model: 'gemini-1.5-flash',
         systemInstruction: PARSER_SYSTEM_PROMPT,
         generationConfig: {
           temperature: 0.1,
           responseMimeType: 'application/json',
           responseSchema: ParsedResumeSchema as any,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 2048,
         },
       });
 
-      const resp = await model.generateContent([
+      const resp = await parsingModel.generateContent([
         { text: `Target role: ${targetRole || 'Finance Analyst'}` },
-        { text: `Resume text:\n${data}` },
+        { text: `Clean resume text:\n${cleanedText}` },
       ]);
 
       const json = resp.response.text(); // guaranteed JSON text
@@ -182,6 +225,14 @@ export async function POST(request: NextRequest) {
         // Try to fix common JSON issues
         let fixedText = json;
         
+        // Fix common JSON issues - be more conservative
+        fixedText = fixedText
+          .replace(/\n/g, ' ')  // Replace newlines with spaces
+          .replace(/\r/g, ' ')  // Replace carriage returns with spaces
+          .replace(/\t/g, ' ')  // Replace tabs with spaces
+          .replace(/\s+/g, ' ') // Multiple spaces to single space
+          .trim();
+        
         // Remove any trailing incomplete JSON
         const lastBrace = fixedText.lastIndexOf('}');
         if (lastBrace > 0) {
@@ -192,10 +243,22 @@ export async function POST(request: NextRequest) {
         try {
           return NextResponse.json(JSON.parse(fixedText));
         } catch (secondError) {
-          return NextResponse.json(
-            { error: 'AI response was malformed. Please try again or upload a shorter resume.' },
-            { status: 500 }
-          );
+          // If still failing, try a more aggressive approach
+          try {
+            // Remove any content after the last complete object
+            const jsonStart = fixedText.indexOf('{');
+            const jsonEnd = fixedText.lastIndexOf('}');
+            if (jsonStart >= 0 && jsonEnd > jsonStart) {
+              const cleanJson = fixedText.substring(jsonStart, jsonEnd + 1);
+              return NextResponse.json(JSON.parse(cleanJson));
+            }
+          } catch (thirdError) {
+            console.error('All JSON parsing attempts failed');
+            return NextResponse.json(
+              { error: 'AI response was malformed. Please try again or upload a shorter resume.' },
+              { status: 500 }
+            );
+          }
         }
       }
     }

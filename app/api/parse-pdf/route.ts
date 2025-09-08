@@ -5,6 +5,26 @@ export const runtime = 'nodejs';
 // Toggle this to true to use stub responses instead of real PDF parsing
 const USE_STUB = false;
 
+// Alternative text extraction function for problematic PDFs
+async function extractTextAlternative(buffer: Buffer): Promise<string> {
+  try {
+    // Try to extract text using a different approach
+    // This is a simplified version that might work better for some PDFs
+    const text = buffer.toString('utf8');
+    
+    // Look for text patterns in the raw buffer
+    const textMatches = text.match(/[A-Za-z0-9\s@.,!?()-]+/g);
+    if (textMatches && textMatches.length > 0) {
+      return textMatches.join(' ').replace(/\s+/g, ' ').trim();
+    }
+    
+    return '';
+  } catch (error) {
+    console.error('Alternative text extraction failed:', error);
+    return '';
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -114,6 +134,27 @@ INTERESTS
       
       rawText = textContent.join('\n\n').trim();
       
+      // Fix character-spaced text (where every character is separated by spaces)
+      // This happens when PDFs have unusual font encoding
+      rawText = rawText
+        .replace(/\s+/g, ' ')  // Replace multiple spaces with single space
+        .replace(/([a-zA-Z])\s+([a-zA-Z])/g, '$1$2')  // Remove spaces between letters
+        .replace(/([a-zA-Z])\s+([a-zA-Z])/g, '$1$2')  // Run twice to catch nested cases
+        .replace(/([a-zA-Z])\s+([a-zA-Z])/g, '$1$2')  // Run three times for complex cases
+        .replace(/\s+/g, ' ')  // Clean up any remaining multiple spaces
+        .trim();
+      
+      // Add proper spacing between words that are running together
+      rawText = rawText
+        .replace(/([a-z])([A-Z])/g, '$1 $2')  // Add space between lowercase and uppercase
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')  // Add space between uppercase letters
+        .replace(/([a-zA-Z])(\d)/g, '$1 $2')  // Add space between letters and numbers
+        .replace(/(\d)([a-zA-Z])/g, '$1 $2')  // Add space between numbers and letters
+        .replace(/([a-zA-Z])([.,!?;:])/g, '$1$2')  // Keep punctuation attached
+        .replace(/([.,!?;:])([a-zA-Z])/g, '$1 $2')  // Add space after punctuation
+        .replace(/\s+/g, ' ')  // Clean up multiple spaces
+        .trim();
+      
     } catch (parseError: any) {
       console.error('PDF parsing error details:', {
         message: parseError.message,
@@ -124,14 +165,31 @@ INTERESTS
         fileType: file.type
       });
       
-      // For parsing errors, suggest DOCX
-      return NextResponse.json(
-        { 
-          error: 'Failed to parse PDF. Please try uploading a DOCX file or a different PDF.',
-          details: parseError.message 
-        },
-        { status: 500 }
-      );
+      // Try alternative parsing approach
+      try {
+        console.log('Trying alternative PDF parsing approach...');
+        
+        // Use a simpler text extraction approach
+        const alternativeText = await extractTextAlternative(buf);
+        if (alternativeText && alternativeText.length > 50) {
+          console.log('Alternative parsing successful, length:', alternativeText.length);
+          rawText = alternativeText;
+          pageCount = 1;
+        } else {
+          throw new Error('Alternative parsing also failed');
+        }
+      } catch (altError: any) {
+        console.error('Alternative parsing also failed:', altError.message);
+        
+        // For parsing errors, suggest DOCX
+        return NextResponse.json(
+          { 
+            error: 'Failed to parse PDF. Please try uploading a DOCX file or a different PDF.',
+            details: parseError.message 
+          },
+          { status: 500 }
+        );
+      }
     }
 
     // Normalize whitespace a bit for downstream LLMs

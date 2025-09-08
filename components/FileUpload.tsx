@@ -98,9 +98,28 @@ export default function FileUpload({ onBack }: { onBack: () => void }) {
       console.log(content);
       console.log('=== END OF EXTRACTED TEXT ===');
       
-      setCurrentStep('PDF parsing successful!');
+      setCurrentStep('Processing with AI...');
+
+      // Parse with AI
+      console.log('Calling Gemini AI to parse resume...');
+      console.log('Content being sent to AI (first 500 chars):', content.substring(0, 500));
+      const parsed = await ResumeAI.parseResume(content, 'Investment Banking Analyst');
+      console.log('AI parsing result:', parsed);
+      console.log('Parsed header:', parsed.header);
+      console.log('Parsed education:', parsed.education);
+      console.log('Parsed experience:', parsed.experience);
+      setParsedData(parsed);
+      setCurrentStep('Enhancing content...');
+
+      // Enhance with AI
+      console.log('Calling Gemini AI to enhance resume...');
+      const enhanced = await ResumeAI.enhanceResume(parsed as any, 'Investment Banking Analyst');
+      console.log('AI enhancement result:', enhanced);
+      setCurrentStep('Updating resume...');
+
+      // Update the resume with parsed and enhanced data
+      updateResumeFromAI(parsed, enhanced);
       
-      // For now, just show success - we'll add AI processing later
       setCurrentStep('Complete!');
       setTimeout(() => {
         setShowPreview(true);
