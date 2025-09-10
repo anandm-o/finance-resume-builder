@@ -3,6 +3,52 @@ import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
 
+const MODEL = google("gemini-2.5-flash-lite");
+
+// Retry utility function
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000,
+): Promise<T> {
+  let lastError: Error;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+
+      // Log the error for debugging
+      console.error(`Attempt ${attempt + 1} failed:`, {
+        error: lastError.message,
+        name: lastError.name,
+        stack: lastError.stack?.split("\n").slice(0, 3).join("\n"),
+      });
+
+      if (attempt === maxRetries) {
+        throw lastError;
+      }
+
+      // Exponential backoff with jitter
+      const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
+      console.log(`Retrying in ${Math.round(delay)}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError!;
+}
+
+// Clean JSON response utility
+function cleanJsonResponse(text: string): string {
+  return text
+    .replace(/\t/g, "") // Remove tabs
+    .replace(/\n\s*\n/g, "\n") // Remove multiple newlines
+    .replace(/\s+/g, " ") // Normalize whitespace
+    .trim();
+}
+
 export const runtime = "nodejs";
 
 // Individual Zod schemas for each resume section
@@ -91,6 +137,13 @@ CONTENT RULES:
 - Convert bullets to: {"id": "unique-id", "text": "exact bullet text", "enhancementLevel": "original"}
 - Use empty strings "" for missing fields, empty arrays [] for missing lists
 - Focus only on the requested section, ignore other sections
+
+JSON OUTPUT RULES:
+- Return ONLY valid JSON, no additional text or explanations
+- NO tabs or special characters in JSON values
+- Use proper JSON escaping for quotes and special characters
+- Ensure all JSON is properly formatted and complete
+- Do not include partial or malformed JSON structures
 `;
 
 const ENHANCER_SYSTEM_PROMPT = `
@@ -123,7 +176,7 @@ export async function POST(request: NextRequest) {
     // Configure the Google provider - it uses GOOGLE_GENERATIVE_AI_API_KEY env var automatically
     // Set the environment variable for this request
     process.env.GOOGLE_GENERATIVE_AI_API_KEY = apiKey;
-    const model = google("gemini-1.5-flash");
+    const model = MODEL;
 
     if (action === "parseResume") {
       if (typeof data !== "string") {
@@ -134,9 +187,10 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 1: Clean and extract readable text from the malformed PDF text
-      const { object: cleanedResult } = await generateObject({
-        model,
-        prompt: `
+      const { object: cleanedResult } = await retryWithBackoff(() =>
+        generateObject({
+          model,
+          prompt: `
 You are a text cleaning expert. I have extracted text from a PDF resume, but it's malformed with missing spaces, character spacing issues, and formatting problems.
 
 Your task: Clean this text and make it readable and properly formatted.
@@ -147,25 +201,27 @@ Rules:
 - Keep the original content but make it readable
 - Maintain the structure (sections, bullet points, etc.)
 - Return ONLY the cleaned text, no explanations
+- Remove tabs and normalize whitespace
 
 Malformed text:
 ${data}
 
 Cleaned text:`,
-        schema: z.object({
-          text: z
-            .string()
-            .describe("The cleaned and properly formatted resume text"),
+          schema: z.object({
+            text: z
+              .string()
+              .describe("The cleaned and properly formatted resume text"),
+          }),
+          temperature: 0.1,
         }),
-        temperature: 0.1,
-      });
+      );
 
       const cleanedText = cleanedResult.text;
 
       console.log("Cleaned text length:", cleanedText.length);
       console.log("Cleaned text preview:", cleanedText.substring(0, 500));
 
-      // Step 2: Parse each section in parallel using Promise.all
+      // Step 2: Parse each section in parallel using Promise.all with retries
       const basePrompt = `Target role: ${targetRole || "Finance Analyst"}
 
 Clean resume text:
@@ -180,100 +236,138 @@ ${cleanedText}`;
         activitiesResult,
         interestsResult,
       ] = await Promise.all([
-        // Parse Header
-        generateObject({
-          model,
-          system: SECTION_PARSER_PROMPT,
-          prompt: `${basePrompt}
+        // Parse Header with retry
+        retryWithBackoff(() =>
+          generateObject({
+            model,
+            system: SECTION_PARSER_PROMPT,
+            prompt: `${basePrompt}
 
 Extract the HEADER section (name, email, phone, location, linkedin).`,
-          schema: z.object({ header: HeaderSchema }),
-          temperature: 0.1,
-        }),
+            schema: z.object({ header: HeaderSchema }),
+            temperature: 0.1,
+          }),
+        ),
 
-        // Parse Education
-        generateObject({
-          model,
-          system: SECTION_PARSER_PROMPT,
-          prompt: `${basePrompt}
+        // Parse Education with retry
+        retryWithBackoff(() =>
+          generateObject({
+            model,
+            system: SECTION_PARSER_PROMPT,
+            prompt: `${basePrompt}
 
 Extract the EDUCATION section (schools, degrees, majors, graduation years, GPA, locations, awards, coursework, competitions).`,
-          schema: z.object({ education: EducationSchema }),
-          temperature: 0.1,
-        }),
+            schema: z.object({ education: EducationSchema }),
+            temperature: 0.1,
+          }),
+        ),
 
-        // Parse Experience
-        generateObject({
-          model,
-          system: SECTION_PARSER_PROMPT,
-          prompt: `${basePrompt}
+        // Parse Experience with retry
+        retryWithBackoff(() =>
+          generateObject({
+            model,
+            system: SECTION_PARSER_PROMPT,
+            prompt: `${basePrompt}
 
 Extract the EMPLOYMENT EXPERIENCE section (companies, titles, locations, dates, bullets).`,
-          schema: z.object({ experience: ExperienceSchema }),
-          temperature: 0.1,
-        }),
+            schema: z.object({ experience: ExperienceSchema }),
+            temperature: 0.1,
+          }),
+        ),
 
-        // Parse Extra Curricular
-        generateObject({
-          model,
-          system: SECTION_PARSER_PROMPT,
-          prompt: `${basePrompt}
+        // Parse Extra Curricular with retry
+        retryWithBackoff(() =>
+          generateObject({
+            model,
+            system: SECTION_PARSER_PROMPT,
+            prompt: `${basePrompt}
 
 Extract the EXTRA-CURRICULAR section (leadership, projects, clubs, organizations, roles, locations, dates, bullets).`,
-          schema: z.object({ extraCurricular: ExtraCurricularSchema }),
-          temperature: 0.1,
-        }),
+            schema: z.object({ extraCurricular: ExtraCurricularSchema }),
+            temperature: 0.1,
+          }),
+        ),
 
-        // Parse Skills
-        generateObject({
-          model,
-          system: SECTION_PARSER_PROMPT,
-          prompt: `${basePrompt}
+        // Parse Skills with retry
+        retryWithBackoff(() =>
+          generateObject({
+            model,
+            system: SECTION_PARSER_PROMPT,
+            prompt: `${basePrompt}
 
 Extract the SKILLS section (technical skills, finance tools, languages, programming languages).`,
-          schema: z.object({ skills: SkillsSchema }),
-          temperature: 0.1,
-        }),
+            schema: z.object({ skills: SkillsSchema }),
+            temperature: 0.1,
+          }),
+        ),
 
-        // Parse Activities
-        generateObject({
-          model,
-          system: SECTION_PARSER_PROMPT,
-          prompt: `${basePrompt}
+        // Parse Activities with retry
+        retryWithBackoff(() =>
+          generateObject({
+            model,
+            system: SECTION_PARSER_PROMPT,
+            prompt: `${basePrompt}
 
 Extract the ACTIVITIES section (activities, hobbies, interests).`,
-          schema: z.object({ activities: ActivitiesSchema }),
-          temperature: 0.1,
-        }),
+            schema: z.object({ activities: ActivitiesSchema }),
+            temperature: 0.1,
+          }),
+        ),
 
-        // Parse Interests
-        generateObject({
-          model,
-          system: SECTION_PARSER_PROMPT,
-          prompt: `${basePrompt}
+        // Parse Interests with retry
+        retryWithBackoff(() =>
+          generateObject({
+            model,
+            system: SECTION_PARSER_PROMPT,
+            prompt: `${basePrompt}
 
 Extract the INTERESTS section (personal interests, hobbies).`,
-          schema: z.object({ interests: InterestsSchema }),
-          temperature: 0.1,
-        }),
+            schema: z.object({ interests: InterestsSchema }),
+            temperature: 0.1,
+          }),
+        ),
       ]);
 
-      // Combine all results
-      const parsedResume = {
-        header: headerResult.object.header,
-        education: educationResult.object.education,
-        experience: experienceResult.object.experience,
-        extraCurricular: extraCurricularResult.object.extraCurricular,
-        skills: skillsResult.object.skills,
-        activities: activitiesResult.object.activities,
-        interests: interestsResult.object.interests,
-      };
+      // Combine all results with error handling
+      try {
+        const parsedResume = {
+          header: headerResult.object.header,
+          education: educationResult.object.education,
+          experience: experienceResult.object.experience,
+          extraCurricular: extraCurricularResult.object.extraCurricular,
+          skills: skillsResult.object.skills,
+          activities: activitiesResult.object.activities,
+          interests: interestsResult.object.interests,
+        };
 
-      // Validate the combined result
-      const validatedResume = ParsedResumeSchema.parse(parsedResume);
+        // Validate the combined result
+        const validatedResume = ParsedResumeSchema.parse(parsedResume);
 
-      console.log("Successfully parsed resume with parallel AI SDK calls");
-      return NextResponse.json(validatedResume);
+        console.log("Successfully parsed resume with parallel AI SDK calls");
+        return NextResponse.json(validatedResume);
+      } catch (validationError) {
+        console.error("Validation error:", validationError);
+        console.error("Parsed resume data:", {
+          header: headerResult.object.header,
+          education: educationResult.object.education,
+          experience: experienceResult.object.experience,
+          extraCurricular: extraCurricularResult.object.extraCurricular,
+          skills: skillsResult.object.skills,
+          activities: activitiesResult.object.activities,
+          interests: interestsResult.object.interests,
+        });
+
+        return NextResponse.json(
+          {
+            error: "Failed to validate parsed resume data",
+            details:
+              validationError instanceof Error
+                ? validationError.message
+                : "Unknown validation error",
+          },
+          { status: 500 },
+        );
+      }
     }
 
     if (action === "enhanceResume") {
@@ -285,16 +379,18 @@ Extract the INTERESTS section (personal interests, hobbies).`,
         gapAnalysis: z.array(z.string()),
       });
 
-      const { object: enhancedResume } = await generateObject({
-        model,
-        system: ENHANCER_SYSTEM_PROMPT,
-        prompt: `Enhance for ${targetRole || "Investment Banking Analyst"}.
+      const { object: enhancedResume } = await retryWithBackoff(() =>
+        generateObject({
+          model,
+          system: ENHANCER_SYSTEM_PROMPT,
+          prompt: `Enhance for ${targetRole || "Investment Banking Analyst"}.
 
 Current resume JSON:
 ${JSON.stringify(data ?? {}, null, 2)}`,
-        schema: enhanceSchema,
-        temperature: 0.2,
-      });
+          schema: enhanceSchema,
+          temperature: 0.2,
+        }),
+      );
 
       return NextResponse.json(enhancedResume);
     }
@@ -305,23 +401,25 @@ ${JSON.stringify(data ?? {}, null, 2)}`,
         context?: string;
       };
 
-      const { object: bulletPoints } = await generateObject({
-        model,
-        system: ENHANCER_SYSTEM_PROMPT,
-        prompt: `Generate 3–5 bullets for ${
-          targetRole || "IB Analyst"
-        } from the notes/context.
+      const { object: bulletPoints } = await retryWithBackoff(() =>
+        generateObject({
+          model,
+          system: ENHANCER_SYSTEM_PROMPT,
+          prompt: `Generate 3–5 bullets for ${
+            targetRole || "IB Analyst"
+          } from the notes/context.
 
 Notes:
 ${notes || ""}
 
 Context:
 ${context || ""}`,
-        schema: z.object({
-          bullets: z.array(z.string()).describe("Array of 3-5 bullet points"),
+          schema: z.object({
+            bullets: z.array(z.string()).describe("Array of 3-5 bullet points"),
+          }),
+          temperature: 0.2,
         }),
-        temperature: 0.2,
-      });
+      );
 
       return NextResponse.json(bulletPoints);
     }
@@ -337,16 +435,18 @@ ${context || ""}`,
           .describe("Array of missing keywords"),
       });
 
-      const { object: atsAnalysis } = await generateObject({
-        model,
-        system: ENHANCER_SYSTEM_PROMPT,
-        prompt: `Analyze ATS fitness for ${targetRole || "IB Analyst"}.
+      const { object: atsAnalysis } = await retryWithBackoff(() =>
+        generateObject({
+          model,
+          system: ENHANCER_SYSTEM_PROMPT,
+          prompt: `Analyze ATS fitness for ${targetRole || "IB Analyst"}.
 
 Resume JSON:
 ${JSON.stringify(data ?? {}, null, 2)}`,
-        schema: atsSchema,
-        temperature: 0.1,
-      });
+          schema: atsSchema,
+          temperature: 0.1,
+        }),
+      );
 
       return NextResponse.json(atsAnalysis);
     }
