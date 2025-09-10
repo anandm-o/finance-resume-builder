@@ -227,18 +227,24 @@ Cleaned text:`,
 Clean resume text:
 ${cleanedText}`;
 
-      const [
-        headerResult,
-        educationResult,
-        experienceResult,
-        extraCurricularResult,
-        skillsResult,
-        activitiesResult,
-        interestsResult,
-      ] = await Promise.all([
+      console.log("Starting parallel parsing with base prompt length:", basePrompt.length);
+
+      let headerResult, educationResult, experienceResult, extraCurricularResult, skillsResult, activitiesResult, interestsResult;
+      
+      try {
+        [
+          headerResult,
+          educationResult,
+          experienceResult,
+          extraCurricularResult,
+          skillsResult,
+          activitiesResult,
+          interestsResult,
+        ] = await Promise.all([
         // Parse Header with retry
-        retryWithBackoff(() =>
-          generateObject({
+        retryWithBackoff(async () => {
+          console.log("Parsing header section...");
+          const result = await generateObject({
             model,
             system: SECTION_PARSER_PROMPT,
             prompt: `${basePrompt}
@@ -246,8 +252,10 @@ ${cleanedText}`;
 Extract the HEADER section (name, email, phone, location, linkedin).`,
             schema: z.object({ header: HeaderSchema }),
             temperature: 0.1,
-          }),
-        ),
+          });
+          console.log("Header parsing completed successfully");
+          return result;
+        }),
 
         // Parse Education with retry
         retryWithBackoff(() =>
@@ -327,6 +335,18 @@ Extract the INTERESTS section (personal interests, hobbies).`,
           }),
         ),
       ]);
+      
+      console.log("All parallel parsing completed successfully");
+      } catch (parallelError) {
+        console.error("Error in parallel parsing:", parallelError);
+        return NextResponse.json(
+          {
+            error: "Failed to parse resume sections in parallel",
+            details: parallelError instanceof Error ? parallelError.message : "Unknown parallel parsing error",
+          },
+          { status: 500 }
+        );
+      }
 
       // Combine all results with error handling
       try {
