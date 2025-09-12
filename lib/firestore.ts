@@ -53,7 +53,7 @@ export const getUserResumes = async (userId: string): Promise<Resume[]> => {
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Resume);
+      } as unknown as Resume);
     });
     
     return resumes;
@@ -76,7 +76,7 @@ export const getResume = async (resumeId: string): Promise<Resume | null> => {
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Resume;
+      } as unknown as Resume;
     } else {
       return null;
     }
@@ -161,7 +161,7 @@ export const searchResumesByRole = async (userId: string, roleTarget: string): P
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate() || new Date(),
-      } as Resume);
+      } as unknown as Resume);
     });
     
     return resumes;

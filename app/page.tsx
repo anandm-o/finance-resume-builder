@@ -14,9 +14,10 @@ export default function HomePage() {
   const handleUpload = () => setCurrentView('upload');
   const handleBuilder = () => setCurrentView('builder');
   const handleTrySample = () => setCurrentView('builder');
+  const handleBack = () => setCurrentView('landing');
 
   if (currentView === 'upload') {
-    return <FileUpload />;
+    return <FileUpload onBack={handleBack} />;
   }
 
   if (currentView === 'builder') {

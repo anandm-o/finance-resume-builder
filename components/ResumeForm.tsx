@@ -62,9 +62,9 @@ export default function ResumeForm() {
               Target Role
             </label>
             <select
-              value={aiEnhancementOptions.roleTarget}
+              value={aiEnhancementOptions.targetRole}
               onChange={(e) => setAIEnhancementOptions({ 
-                roleTarget: e.target.value as any 
+                targetRole: e.target.value as any 
               })}
               className="input-field"
             >
@@ -98,9 +98,9 @@ export default function ResumeForm() {
           <label className="flex items-center">
             <input
               type="checkbox"
-              checked={aiEnhancementOptions.includeQuantification}
+              checked={aiEnhancementOptions.enableQuantification}
               onChange={(e) => setAIEnhancementOptions({ 
-                includeQuantification: e.target.checked 
+                enableQuantification: e.target.checked 
               })}
               className="mr-2"
             />
@@ -110,9 +110,9 @@ export default function ResumeForm() {
           <label className="flex items-center">
             <input
               type="checkbox"
-              checked={aiEnhancementOptions.includeKeywords}
+              checked={aiEnhancementOptions.enableKeywords}
               onChange={(e) => setAIEnhancementOptions({ 
-                includeKeywords: e.target.checked 
+                enableKeywords: e.target.checked 
               })}
               className="mr-2"
             />

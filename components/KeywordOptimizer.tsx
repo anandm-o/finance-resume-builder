@@ -30,19 +30,19 @@ export default function KeywordOptimizer({ onClose }: KeywordOptimizerProps) {
     };
 
     // Add role-specific keywords
-    if (aiEnhancementOptions.roleTarget.includes('Banking')) {
+    if (aiEnhancementOptions.targetRole.includes('Banking')) {
       baseKeywords.finance.push('Investment Banking', 'Capital Markets', 'Underwriting', 'Syndication');
       baseKeywords.technical.push('Bloomberg Terminal', 'Capital IQ', 'FactSet');
-    } else if (aiEnhancementOptions.roleTarget.includes('Asset Management')) {
+    } else if (aiEnhancementOptions.targetRole.includes('Asset Management')) {
       baseKeywords.finance.push('Portfolio Management', 'Risk Management', 'Asset Allocation', 'Performance Analysis');
       baseKeywords.technical.push('Risk Models', 'Portfolio Optimization', 'Performance Attribution');
-    } else if (aiEnhancementOptions.roleTarget.includes('Corporate Finance')) {
+    } else if (aiEnhancementOptions.targetRole.includes('Corporate Finance')) {
       baseKeywords.finance.push('FP&A', 'Budgeting', 'Forecasting', 'Financial Planning', 'Working Capital');
       baseKeywords.technical.push('3-Statement Models', 'Budget Models', 'Cash Flow Forecasting');
     }
 
     return baseKeywords;
-  }, [aiEnhancementOptions.roleTarget]);
+  }, [aiEnhancementOptions.targetRole]);
 
   // Analyze resume content for keyword matches
   const keywordAnalysis = useMemo(() => {
@@ -157,7 +157,7 @@ export default function KeywordOptimizer({ onClose }: KeywordOptimizerProps) {
                 <span className="text-sm">({getScoreLabel(overallScore)})</span>
               </div>
               <p className="text-finance-600 mt-2">
-                Target Role: {aiEnhancementOptions.roleTarget}
+                Target Role: {aiEnhancementOptions.targetRole}
               </p>
             </div>
           </div>

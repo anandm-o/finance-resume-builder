@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Resume, RoleTarget, EnhancementLevel } from '../types/resume';
+import { Resume, RoleTarget, EnhancementLevel, Certification } from '../types/resume';
 import { 
   createResume as createFirestoreResume, 
   updateResume as updateFirestoreResume,
   deleteResume as deleteFirestoreResume,
   getUserResumes,
-  getResume as getFirestoreResume
+  getResume as getFirestoreResume,
+  duplicateResume
 } from '../lib/firestore';
 import { useFirebase } from '../contexts/FirebaseContext';
 import { templateResume } from '../data/templateResume';
@@ -52,12 +53,9 @@ interface ResumeStore {
   removeActivity: (index: number) => void;
   addInterest: (interest: string) => void;
   removeInterest: (index: number) => void;
-  updateCertification: (updates: Partial<Resume['certifications'][0]>, index: number) => void;
+  updateCertification: (updates: Partial<Certification>, index: number) => void;
   addCertification: () => void;
   removeCertification: (index: number) => void;
-  updateDeal: (updates: Partial<Resume['deals'][0]>, index: number) => void;
-  addDeal: () => void;
-  removeDeal: (index: number) => void;
   updateRoleTarget: (role: RoleTarget) => void;
   
   // UI actions
@@ -342,7 +340,7 @@ export const useResumeStore = create<ResumeStore>()(
       updateCertification: (updates, index) => set((state) => ({
         resume: {
           ...state.resume,
-          certifications: state.resume.certifications.map((cert, i) =>
+          certifications: (state.resume.certifications || []).map((cert, i) =>
             i === index ? { ...cert, ...updates } : cert
           ),
         },
@@ -352,7 +350,7 @@ export const useResumeStore = create<ResumeStore>()(
         resume: {
           ...state.resume,
           certifications: [
-            ...state.resume.certifications,
+            ...(state.resume.certifications || []),
             {
               id: `cert-${Date.now()}`,
               name: '',
@@ -366,42 +364,10 @@ export const useResumeStore = create<ResumeStore>()(
       removeCertification: (index) => set((state) => ({
         resume: {
           ...state.resume,
-          certifications: state.resume.certifications.filter((_, i) => i !== index),
+          certifications: (state.resume.certifications || []).filter((_, i) => i !== index),
         },
       })),
 
-      updateDeal: (updates, index) => set((state) => ({
-        resume: {
-          ...state.resume,
-          deals: state.resume.deals.map((deal, i) =>
-            i === index ? { ...deal, ...updates } : deal
-          ),
-        },
-      })),
-
-      addDeal: () => set((state) => ({
-        resume: {
-          ...state.resume,
-          deals: [
-            ...state.resume.deals,
-            {
-              id: `deal-${Date.now()}`,
-              type: '',
-              size: '',
-              role: '',
-              tasks: [],
-              outcome: '',
-            },
-          ],
-        },
-      })),
-
-      removeDeal: (index) => set((state) => ({
-        resume: {
-          ...state.resume,
-          deals: state.resume.deals.filter((_, i) => i !== index),
-        },
-      })),
 
       updateRoleTarget: (role) => set((state) => ({
         resume: {
@@ -471,7 +437,6 @@ export const useResumeStore = create<ResumeStore>()(
             activities: parsedData.activities && parsedData.activities.length > 0 ? parsedData.activities : state.resume.activities,
             interests: parsedData.interests && parsedData.interests.length > 0 ? parsedData.interests : state.resume.interests,
             certifications: parsedData.certifications && parsedData.certifications.length > 0 ? parsedData.certifications : state.resume.certifications,
-            deals: parsedData.deals && parsedData.deals.length > 0 ? parsedData.deals : state.resume.deals,
             meta: {
               ...state.resume.meta,
               updatedAt: new Date(),

@@ -8,7 +8,10 @@ export default function LeadershipSection() {
   const { resume, updateLeadership, addLeadership, removeLeadership } = useResumeStore();
 
   const handleChange = (id: string, field: string, value: any) => {
-    updateLeadership(id, { [field]: value });
+    const index = resume.leadership.findIndex(lead => lead.id === id);
+    if (index !== -1) {
+      updateLeadership({ [field]: value }, index);
+    }
   };
 
   return (
@@ -18,7 +21,7 @@ export default function LeadershipSection() {
           <div className="flex justify-between items-start mb-4">
             <h4 className="font-medium text-finance-800">Leadership #{index + 1}</h4>
             <button
-              onClick={() => removeLeadership(lead.id)}
+              onClick={() => removeLeadership(index)}
               className="text-error-500 hover:text-error-600 p-1"
             >
               <Trash2 className="h-4 w-4" />
@@ -106,7 +109,7 @@ export default function LeadershipSection() {
                     enhancementLevel: 'Keep as-is' as const,
                   };
                   const updatedBullets = [...lead.bullets, newBullet];
-                  updateLeadership(lead.id, { bullets: updatedBullets });
+                  updateLeadership({ bullets: updatedBullets }, index);
                 }}
                 className="btn-outline px-3 py-1 text-sm"
               >
@@ -122,7 +125,7 @@ export default function LeadershipSection() {
                   <button
                     onClick={() => {
                       const updatedBullets = lead.bullets.filter((_, i) => i !== bulletIndex);
-                      updateLeadership(lead.id, { bullets: updatedBullets });
+                      updateLeadership({ bullets: updatedBullets }, index);
                     }}
                     className="text-error-500 hover:text-error-600"
                   >
@@ -136,7 +139,7 @@ export default function LeadershipSection() {
                     const updatedBullets = lead.bullets.map((b, i) => 
                       i === bulletIndex ? { ...b, ...updates } : b
                     );
-                    updateLeadership(lead.id, { bullets: updatedBullets });
+                    updateLeadership({ bullets: updatedBullets }, index);
                   }}
                 />
               </div>

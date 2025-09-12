@@ -111,7 +111,7 @@ export default function Dashboard() {
                   </p>
                 </div>
                 <div className="text-xs text-finance-500">
-                  {resume.updatedAt && new Date(resume.updatedAt).toLocaleDateString()}
+                  {resume.meta.updatedAt && new Date(resume.meta.updatedAt).toLocaleDateString()}
                 </div>
               </div>
 

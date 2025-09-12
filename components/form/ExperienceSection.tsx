@@ -13,7 +13,10 @@ export default function ExperienceSection() {
   const [newProjectResult, setNewProjectResult] = useState('');
 
   const handleChange = (id: string, field: string, value: any) => {
-    updateExperience(id, { [field]: value });
+    const index = resume.experience.findIndex(exp => exp.id === id);
+    if (index !== -1) {
+      updateExperience({ [field]: value }, index);
+    }
   };
 
   const handleAddProject = (expId: string) => {
@@ -26,7 +29,10 @@ export default function ExperienceSection() {
           result: newProjectResult.trim()
         };
         const updatedProjects = [...(exp.selectedProjects || []), newProject];
-        updateExperience(expId, { selectedProjects: updatedProjects });
+        const expIndex = resume.experience.findIndex(e => e.id === expId);
+        if (expIndex !== -1) {
+          updateExperience({ selectedProjects: updatedProjects }, expIndex);
+        }
         setNewProjectName('');
         setNewProjectAction('');
         setNewProjectResult('');
@@ -38,7 +44,10 @@ export default function ExperienceSection() {
     const exp = resume.experience.find(e => e.id === expId);
     if (exp) {
       const updatedProjects = exp.selectedProjects?.filter((_, i) => i !== projectIndex) || [];
-      updateExperience(expId, { selectedProjects: updatedProjects });
+      const expIndex = resume.experience.findIndex(e => e.id === expId);
+      if (expIndex !== -1) {
+        updateExperience({ selectedProjects: updatedProjects }, expIndex);
+      }
     }
   };
 
@@ -75,7 +84,7 @@ export default function ExperienceSection() {
           <div className="flex justify-between items-start mb-4">
             <h4 className="font-medium text-finance-800">Experience #{index + 1}</h4>
             <button
-              onClick={() => removeExperience(exp.id)}
+              onClick={() => removeExperience(index)}
               className="text-error-500 hover:text-error-600 p-1"
             >
               <Trash2 className="h-4 w-4" />
@@ -233,7 +242,7 @@ export default function ExperienceSection() {
                 Experience Bullets
               </label>
               <button
-                onClick={() => addExperienceBullet(exp.id)}
+                onClick={() => addExperienceBullet(index)}
                 className="btn-outline px-3 py-1 text-sm"
               >
                 <Plus className="h-3 w-3 mr-1" />
@@ -251,7 +260,7 @@ export default function ExperienceSection() {
                     </span>
                   </div>
                   <button
-                    onClick={() => removeExperienceBullet(exp.id, bullet.id)}
+                    onClick={() => removeExperienceBullet(index, bulletIndex)}
                     className="text-error-500 hover:text-error-600"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -260,7 +269,7 @@ export default function ExperienceSection() {
                 
                 <BulletEditor
                   bullet={bullet}
-                  onChange={(updates) => updateExperienceBullet(exp.id, bullet.id, updates)}
+                  onChange={(updates) => updateExperienceBullet(index, bulletIndex, updates)}
                 />
               </div>
             ))}

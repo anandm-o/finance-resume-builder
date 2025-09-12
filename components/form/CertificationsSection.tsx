@@ -29,14 +29,14 @@ export default function CertificationsSection() {
   };
 
   const handleRemoveCertification = (index: number) => {
-    const updatedCerts = resume.certifications.filter((_, i) => i !== index);
+    const updatedCerts = (resume.certifications || []).filter((_, i) => i !== index);
     // We need to update the resume directly for certifications
     // This is a limitation of the current store structure
   };
 
   return (
     <div className="space-y-6">
-      {resume.certifications.map((cert, index) => (
+      {(resume.certifications || []).map((cert, index) => (
         <div key={index} className="p-4 border border-finance-200 rounded-lg">
           <div className="flex justify-between items-start mb-4">
             <h4 className="font-medium text-finance-800">Certification #{index + 1}</h4>

@@ -10,7 +10,7 @@ export default function EducationSection() {
   const [newAward, setNewAward] = useState('');
 
   const handleChange = (index: number, field: string, value: any) => {
-    updateEducation(index, { [field]: value });
+    updateEducation({ [field]: value }, index);
   };
 
   const handleAddCoursework = (index: number) => {

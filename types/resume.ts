@@ -117,9 +117,12 @@ export interface Resume {
   education: Education[];
   experience: Experience[];
   extraCurricular: ExtraCurricular[];
+  leadership: Leadership[];
+  projects: Project[];
   skills: Skills;
   activities: string[];
   interests: string[];
+  certifications?: Certification[];
 }
 
 export interface AIEnhancementOptions {

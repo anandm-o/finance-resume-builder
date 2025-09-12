@@ -8,7 +8,10 @@ export default function ProjectsSection() {
   const { resume, updateProject, addProject, removeProject } = useResumeStore();
 
   const handleChange = (id: string, field: string, value: any) => {
-    updateProject(id, { [field]: value });
+    const index = resume.projects.findIndex(proj => proj.id === id);
+    if (index !== -1) {
+      updateProject({ [field]: value }, index);
+    }
   };
 
   return (
@@ -18,7 +21,7 @@ export default function ProjectsSection() {
           <div className="flex justify-between items-start mb-4">
             <h4 className="font-medium text-finance-800">Project #{index + 1}</h4>
             <button
-              onClick={() => removeProject(project.id)}
+              onClick={() => removeProject(index)}
               className="text-error-500 hover:text-error-600 p-1"
             >
               <Trash2 className="h-4 w-4" />
@@ -80,7 +83,7 @@ export default function ProjectsSection() {
                     enhancementLevel: 'Keep as-is' as const,
                   };
                   const updatedBullets = [...project.bullets, newBullet];
-                  updateProject(project.id, { bullets: updatedBullets });
+                  updateProject({ bullets: updatedBullets }, index);
                 }}
                 className="btn-outline px-3 py-1 text-sm"
               >
@@ -96,7 +99,7 @@ export default function ProjectsSection() {
                   <button
                     onClick={() => {
                       const updatedBullets = project.bullets.filter((_, i) => i !== bulletIndex);
-                      updateProject(project.id, { bullets: updatedBullets });
+                      updateProject({ bullets: updatedBullets }, index);
                     }}
                     className="text-error-500 hover:text-error-600"
                   >
@@ -110,7 +113,7 @@ export default function ProjectsSection() {
                     const updatedBullets = project.bullets.map((b, i) => 
                       i === bulletIndex ? { ...b, ...updates } : b
                     );
-                    updateProject(project.id, { bullets: updatedBullets });
+                    updateProject({ bullets: updatedBullets }, index);
                   }}
                 />
               </div>

@@ -130,4 +130,6 @@ export const templateResume: Resume = {
   },
   activities: ['Student Clubs, Volunteer Work, Independent Activities'],
   interests: ['Keep this to 1-2 lines and be specific, hobbies and interests; do not go overboard'],
+  leadership: [],
+  projects: [],
 };

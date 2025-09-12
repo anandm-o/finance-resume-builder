@@ -75,8 +75,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
                   Target Role
                 </label>
                 <select
-                  value={aiEnhancementOptions.roleTarget}
-                  onChange={(e) => handleEnhancementChange('roleTarget', e.target.value)}
+                  value={aiEnhancementOptions.targetRole}
+                  onChange={(e) => handleEnhancementChange('targetRole', e.target.value)}
                   className="input-field"
                 >
                   <option value="Investment Banking Analyst">Investment Banking Analyst</option>
@@ -95,8 +95,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={aiEnhancementOptions.includeQuantification}
-                  onChange={(e) => handleEnhancementChange('includeQuantification', e.target.checked)}
+                  checked={aiEnhancementOptions.enableQuantification}
+                  onChange={(e) => handleEnhancementChange('enableQuantification', e.target.checked)}
                   className="mr-3"
                 />
                 <div>
@@ -108,8 +108,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={aiEnhancementOptions.includeKeywords}
-                  onChange={(e) => handleEnhancementChange('includeKeywords', e.target.checked)}
+                  checked={aiEnhancementOptions.enableKeywords}
+                  onChange={(e) => handleEnhancementChange('enableKeywords', e.target.checked)}
                   className="mr-3"
                 />
                 <div>
@@ -121,8 +121,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={aiEnhancementOptions.preserveOriginalFacts}
-                  onChange={(e) => handleEnhancementChange('preserveOriginalFacts', e.target.checked)}
+                  checked={aiEnhancementOptions.preserveFacts}
+                  onChange={(e) => handleEnhancementChange('preserveFacts', e.target.checked)}
                   className="mr-3"
                 />
                 <div>
