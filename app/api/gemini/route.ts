@@ -167,10 +167,15 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: "Gemini API key not configured on server" },
-        { status: 500 },
-      );
+      console.warn("Gemini API key not configured, using demo mode");
+      // Return a demo response instead of failing
+      return NextResponse.json({
+        success: true,
+        data: {
+          enhancedText: "Demo mode: Please configure GEMINI_API_KEY for AI enhancement",
+          suggestions: ["This is a demo response", "Configure your API key for real AI features"]
+        }
+      });
     }
 
     // Configure the Google provider - it uses GOOGLE_GENERATIVE_AI_API_KEY env var automatically
