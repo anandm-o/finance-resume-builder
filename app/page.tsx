@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useFirebase } from '../contexts/FirebaseContext';
 import FileUpload from '../components/FileUpload';
 import ResumeBuilder from '../components/ResumeBuilder';
+import Link from 'next/link';
 import { ArrowRight, Upload, Edit3, Eye, Shield, Zap, Target, FileText } from 'lucide-react';
 
 export default function HomePage() {
@@ -44,13 +45,13 @@ export default function HomePage() {
               Upload Resume
               <ArrowRight className="h-5 w-5" />
             </button>
-            <button
-              onClick={handleBuilder}
+            <Link
+              href="/resume-creator"
               className="btn-secondary text-lg px-8 py-4 flex items-center justify-center gap-2"
             >
               <Edit3 className="h-5 w-5" />
               Start from Scratch
-            </button>
+            </Link>
             <button
               onClick={handleTrySample}
               className="btn-outline text-lg px-8 py-4 flex items-center justify-center gap-2"
@@ -188,13 +189,13 @@ export default function HomePage() {
               <Upload className="h-5 w-5" />
               Upload & Transform
             </button>
-            <button
-              onClick={handleBuilder}
+            <Link
+              href="/resume-creator"
               className="border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold py-3 px-8 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
             >
               <Edit3 className="h-5 w-5" />
               Start Building
-            </button>
+            </Link>
           </div>
         </div>
       </section>
